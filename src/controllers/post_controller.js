@@ -7,6 +7,8 @@ export const createPost = (req, res) => {
   post.content = req.body.content;
   post.coverUrl = req.body.coverUrl;
   post.comments = req.body.comments;
+  post.author = req.user;
+  console.log(req.user);
   post.save()
     .then((result) => {
       res.json({ message: 'Post created!' });
@@ -17,28 +19,37 @@ export const createPost = (req, res) => {
 };
 export const getPosts = (req, res) => {
   console.log('getting');
-  Post.find().sort({ createdAt: -1 }).then((result) => {
+  Post.find().populate('author').sort({ createdAt: -1 }).then((result) => {
     res.json(result);
-  }).catch((error) => {
-    res.status(404).json({ error });
-  });
+  })
+    .catch((error) => {
+      res.status(404).json({ error });
+    });
 };
 export const getPost = (req, res) => {
-  Post.findById(req.params.id).then((result) => {
+  Post.findById(req.params.id).populate('author').then((result) => {
     res.json(result);
   }).catch((error) => {
     res.status(404).json({ error });
   });
 };
 export const deletePost = (req, res) => {
-  Post.findByIdAndDelete(req.params.id).then((result) => {
-    res.json(result);
-  }).catch((error) => {
-    res.status(500).json({ error });
+  Post.findById(req.params.id).populate('author').then((result) => {
+    if (result.author.email !== req.user.email) {
+      console.log(result, req.user.email);
+      res.status(403).send('You are not authorized to delete this post.');
+    } else {
+      Post.findByIdAndDelete(req.params.id).then((result2) => {
+        res.json(result2);
+      }).catch((error) => {
+        res.status(500).json({ error });
+      });
+    }
   });
 };
+
 export const updatePost = (req, res) => {
-  Post.findByIdAndUpdate(req.params.id, req.body, { new: true }).then((result) => {
+  Post.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('author').then((result) => {
     res.json(result);
   }).catch((error) => {
     res.status(500).json({ error });
